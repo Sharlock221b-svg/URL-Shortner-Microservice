@@ -81,17 +81,20 @@ app.post("/api/shorturl", (req, res) => {
     .catch((err) => res.json({ error: err }));
 });
 
+//redirecting to the original url
 app.get("/api/shorturl/:id", async (req, res) => {
+  //accessing the short url form the url
   const shortURL = req.params.id;
   try {
+    //checking if the short url is in the database
     const data = await URL_map.findOne(
       { short_url: shortURL },
       { original_url: 1, short_url: 1, _id: 0 }
     );
     if (data !== null) {
-      res.redirect(data.original_url);
+      res.redirect(data.original_url); //redirecting to the original url
     } else {
-      res.json({ error: "No short URL found for the given input" });
+      res.json({ error: "No short URL found for the given input" });//if not found
     }
   } catch (err) {
     res.error(err);
