@@ -5,8 +5,9 @@ const app = express();
 const mongoose = require("mongoose");
 const bodyParse = require("body-parser");
 const dns = require("dns");
-const shortid = require('shortid');
-
+const shortid = require("shortid");
+const validUrl = require("valid-url");
+const url = require("url");
 
 // Basic Configuration
 const port = process.env.PORT || 3000;
@@ -21,10 +22,10 @@ mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
-
+//document schema
 const url_map = new mongoose.Schema({
-  original_url: {type: String, unique: true, required: true},
-  short_url: {type: String, unique: true, required: true}
+  original_url: { type: String, unique: true, required: true },
+  short_url: { type: String, unique: true, required: true },
 });
 
 const URL_map = mongoose.model("url_map", url_map);
@@ -46,26 +47,38 @@ app.post("/api/shorturl", (req, res) => {
 
   const checkURL = new Promise((resolve, reject) => {
     //checking if the url is valid
-    urlParts = /^(?:\w+\:\/\/)?([^\/]+)([^\?]*)\??(.*)$/.exec(url);
-    hostname = urlParts[1]; //hostname
-    dns.lookup(hostname, (err, address, family) => {
-       if(err) reject(err);
-       else resolve("Valid URL");
-    })
+    if (!validUrl.isUri(url)) {
+      reject("Invalid URL");
+    }
+    let host = new URL(url).hostname;
+    dns.lookup(host, (err) => {
+        if (err) {
+          reject("Invalid URL")
+        }
+        resolve(url);
+     })
   });
 
-  checkURL.then((result) => {
-    //if the url is valid
-    const shortURL = shortid.generate();
-    let lookURL =  URL_map.findOne({original_url: url}, {original_url: 1, short_url: 1});
-    
-    URL_map.create({original_url: url, short_url: shortURL}, (err) => {
-       if(err) res.json({error: err});
-       else res.json({original_url: url, short_url: shortURL});
+  checkURL
+    .then(async (result) => {
+      //if the url is valid
+      const shortURL = shortid.generate();
+      let lookURL = await URL_map.findOne(
+        { original_url: url },
+        { original_url: 1, short_url: 1, _id: 0 }
+      );
+      if (lookURL !== null) {
+        res.json(lookURL);
+      } else {
+        let newURL = new URL_map({
+          original_url: url,
+          short_url: shortURL,
+        });
+        newURL.save();
+        res.json({ original_url: url, short_url: shortURL });
+      }
     })
-
-  })
-  .catch((err) => res.json({error: "Invalid URL"}));
+    .catch((err) => res.json({ error: "Invalid URL" }));
 });
 
 //handeling undefined routes
