@@ -55,7 +55,7 @@ app.post("/api/shorturl", (req, res) => {
         reject("Invalid Hostname");
       }
       resolve(url);
-   });
+    });
   });
 
   checkURL
@@ -79,6 +79,23 @@ app.post("/api/shorturl", (req, res) => {
       }
     })
     .catch((err) => res.json({ error: err }));
+});
+
+app.get("/api/shorturl/:id", async (req, res) => {
+  const shortURL = req.params.id;
+  try {
+    const data = await URL_map.findOne(
+      { short_url: shortURL },
+      { original_url: 1, short_url: 1, _id: 0 }
+    );
+    if (data !== null) {
+      res.redirect(data.original_url);
+    } else {
+      res.json({ error: "No short URL found for the given input" });
+    }
+  } catch (err) {
+    res.error(err);
+  }
 });
 
 //handeling undefined routes
