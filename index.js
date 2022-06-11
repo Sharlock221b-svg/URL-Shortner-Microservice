@@ -6,8 +6,7 @@ const mongoose = require("mongoose");
 const bodyParse = require("body-parser");
 const dns = require("dns");
 const shortid = require("shortid");
-const validUrl = require("valid-url");
-const url = require("url");
+const validUrl = require("is-url");
 
 // Basic Configuration
 const port = process.env.PORT || 3000;
@@ -44,25 +43,26 @@ app.get("/api/hello", function (_req, res) {
 app.post("/api/shorturl", (req, res) => {
   //accessing the url from the body
   const url = req.body.url;
-
   const checkURL = new Promise((resolve, reject) => {
     //checking if the url is valid
-    if (!validUrl.isUri(url)) {
-      reject("Invalid URL");
+    if (!validUrl(url)) {
+      reject("invalid url");
     }
+    //hostname lookup
     let host = new URL(url).hostname;
     dns.lookup(host, (err) => {
-        if (err) {
-          reject("Invalid URL")
-        }
-        resolve(url);
-     })
+      if (err) {
+        reject("Invalid Hostname");
+      }
+      resolve(url);
+   });
   });
 
   checkURL
     .then(async (result) => {
       //if the url is valid
       const shortURL = shortid.generate();
+      //checking if the url is already in the database
       let lookURL = await URL_map.findOne(
         { original_url: url },
         { original_url: 1, short_url: 1, _id: 0 }
@@ -74,11 +74,11 @@ app.post("/api/shorturl", (req, res) => {
           original_url: url,
           short_url: shortURL,
         });
-        newURL.save();
+        await newURL.save();
         res.json({ original_url: url, short_url: shortURL });
       }
     })
-    .catch((err) => res.json({ error: "Invalid URL" }));
+    .catch((err) => res.json({ error: err }));
 });
 
 //handeling undefined routes
