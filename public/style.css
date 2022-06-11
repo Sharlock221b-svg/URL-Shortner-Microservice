@@ -70,3 +70,12 @@ input[type='submit']::shadow{
 a:hover {
   color: #0099ff; 
 }
+
+@media  screen and (min-width: 600px){
+  form{
+    width: 100%;
+  }
+  fieldset{
+    width: 100%;
+  }
+}
